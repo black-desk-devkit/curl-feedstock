@@ -1,0 +1,145 @@
+schema_version: 1
+
+context:
+  version: "8.22.0"
+  build_number: 1
+
+recipe:
+  name: curl-split
+  version: ${{ version }}
+
+source:
+  url: https://curl.se/download/curl-${{ version }}.tar.bz2
+  sha256: 5d956a6a22b3c279f50c421ee5d3c9e9d660cb6f115dcf881b579e952130549c
+
+build:
+  number: ${{ build_number }}
+  skip: win
+  dynamic_linking:
+    overlinking_behavior: error
+    overdepending_behavior: error
+
+outputs:
+  # Build all outputs once, then split the installed prefix below.
+  - staging:
+      name: curl-build
+    requirements:
+      build:
+        - ${{ compiler('c') }}
+        - libtool
+        - make
+        - pkg-config
+      host:
+        - krb5
+        - libnghttp2
+        - libpsl
+        - libssh2
+        - openssl
+        - zlib
+        - zstd
+    build:
+      script: build.sh
+
+  - package:
+      name: libcurl
+      version: ${{ version }}
+    inherit: curl-build
+    build:
+      files:
+        - include/curl/**
+        - lib/libcurl.so*
+        - lib/libcurl*.dylib*
+        - lib/pkgconfig/libcurl*
+        - bin/curl-config
+        - libexec/curl/curl-config
+    requirements:
+      build:
+        - ${{ compiler('c') }}
+      run:
+        - libssh2
+        - libnghttp2
+      run_exports:
+        - ${{ pin_subpackage('libcurl') }}
+    tests:
+      - script:
+          - test -x "$PREFIX/bin/curl-config"
+          - test -x "$PREFIX/libexec/curl/curl-config"
+          - test -f "$PREFIX/lib/pkgconfig/libcurl.pc"
+          - test ! -f "$PREFIX/lib/libcurl.a"
+          - test "$(curl-config --prefix)" = "$PREFIX"
+          - curl-config --ssl-backends | grep -q OpenSSL
+          - grep -q "CONDA_BUILD" "$PREFIX/bin/curl-config"
+      - package_contents:
+          bin:
+            - curl-config
+          files:
+            - libexec/curl/curl-config
+            - lib/pkgconfig/libcurl.pc
+
+  - package:
+      name: libcurl-static
+      version: ${{ version }}
+    inherit: curl-build
+    build:
+      files:
+        - lib/libcurl.a*
+    requirements:
+      build:
+        - ${{ compiler('c') }}
+      host:
+        - ${{ pin_subpackage('libcurl', exact=True) }}
+        - libpsl-static
+      run:
+        - ${{ pin_subpackage('libcurl', exact=True) }}
+    tests:
+      - script:
+          - test -f "$PREFIX/lib/libcurl.a"
+      - package_contents:
+          lib:
+            - libcurl.a
+
+  - package:
+      name: curl
+      version: ${{ version }}
+    inherit: curl-build
+    build:
+      files:
+        - bin/curl
+    requirements:
+      build:
+        - ${{ compiler('c') }}
+      host:
+        - ${{ pin_subpackage('libcurl', exact=True) }}
+        # Keep the SSL variant explicit for consistency with the upstream
+        # split recipe.
+        - openssl
+        - zlib
+        - zstd
+        - libssh2
+        - krb5
+        - libpsl
+      run:
+        - ${{ pin_subpackage('libcurl', exact=True) }}
+        - libssh2
+    tests:
+      - script:
+          - curl --version
+      - package_contents:
+          bin:
+            - curl
+
+about:
+  homepage: https://curl.se/
+  summary: Tool and library for transferring data with URLs.
+  description: |
+    curl is an open source command line tool and library that transfers data
+    with URL syntax. This fork carries a small wrapper around curl-config so
+    interactive builds can fall back to the system configuration tool unless
+    they are running inside a conda-style package build.
+  license: curl
+  license_file: COPYING
+  repository: https://github.com/curl/curl
+
+extra:
+  recipe-maintainers:
+    - black-desk

@@ -1,0 +1,31 @@
+#!/bin/sh
+# Wrapper for the prefix-relocatable curl-config installed by this package.
+#
+# Package builds must always observe the libcurl in the conda host prefix.
+# An interactive shell with a conda environment activated is different: many
+# users still expect plain "make" to use the host toolchain and system
+# development metadata unless they explicitly opted into conda dependencies.
+# In that case, prefer the system curl-config when it exists.
+
+set -eu
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+prefix=$(CDPATH= cd -- "$script_dir/.." && pwd)
+real_curl_config="$prefix/libexec/curl/curl-config"
+
+# conda-build and rattler-build set this during both build and package tests.
+if [ "${CONDA_BUILD:-0}" = "1" ]; then
+    exec "$real_curl_config" "$@"
+fi
+
+# Escape hatch for users who intentionally want to compile against conda's
+# libcurl from an interactive shell.
+if [ "${CURL_CONFIG_NO_SYSTEM_FALLBACK:-0}" = "1" ]; then
+    exec "$real_curl_config" "$@"
+fi
+
+if [ -x /usr/bin/curl-config ]; then
+    exec /usr/bin/curl-config "$@"
+fi
+
+exec "$real_curl_config" "$@"
