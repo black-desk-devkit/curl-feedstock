@@ -31,6 +31,7 @@ jobs:
           recipe-path: recipe/recipe.yaml
           artifact-name: pkg-${{ matrix.target-platform }}
           build-args: >-
+            --experimental
             -c https://prefix.dev/black-desk
             -c conda-forge
             --target-platform ${{ matrix.target-platform }}
