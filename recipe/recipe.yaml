@@ -53,8 +53,6 @@ outputs:
         - bin/curl-config
         - libexec/curl/curl-config
     requirements:
-      build:
-        - ${{ compiler('c') }}
       run:
         - libssh2
         - libnghttp2
@@ -79,13 +77,13 @@ outputs:
   - package:
       name: libcurl-static
       version: ${{ version }}
-    inherit: curl-build
+    inherit:
+      from: curl-build
+      run_exports: false
     build:
       files:
         - lib/libcurl.a*
     requirements:
-      build:
-        - ${{ compiler('c') }}
       host:
         - ${{ pin_subpackage('libcurl', exact=True) }}
         - libpsl-static
@@ -101,26 +99,17 @@ outputs:
   - package:
       name: curl
       version: ${{ version }}
-    inherit: curl-build
+    inherit:
+      from: curl-build
+      run_exports: false
     build:
       files:
         - bin/curl
     requirements:
-      build:
-        - ${{ compiler('c') }}
       host:
         - ${{ pin_subpackage('libcurl', exact=True) }}
-        # Keep the SSL variant explicit for consistency with the upstream
-        # split recipe.
-        - openssl
-        - zlib
-        - zstd
-        - libssh2
-        - krb5
-        - libpsl
       run:
         - ${{ pin_subpackage('libcurl', exact=True) }}
-        - libssh2
     tests:
       - script:
           - curl --version
