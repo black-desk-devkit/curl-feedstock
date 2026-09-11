@@ -28,6 +28,7 @@ jobs:
       - name: Build conda package
         uses: prefix-dev/rattler-build-action@v0.2.36
         with:
+          rattler-build-version: v0.76.0
           recipe-path: recipe/recipe.yaml
           artifact-name: pkg-${{ matrix.target-platform }}
           build-args: >-
@@ -73,6 +74,7 @@ jobs:
       - name: Setup rattler-build
         uses: prefix-dev/rattler-build-action@v0.2.36
         with:
+          rattler-build-version: v0.76.0
           setup-only: true
 
       - name: Upload packages
