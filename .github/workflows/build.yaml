@@ -41,14 +41,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mapfile -t pkgs < <(find output -type f -name '*.conda' | sort)
-          if [ ${#pkgs[@]} -eq 0 ]; then
+          count=$(find output -type f -name '*.conda' | wc -l)
+          if [ "$count" -eq 0 ]; then
             echo "::error::No .conda package found in output/"
             exit 1
           fi
-          for pkg in "${pkgs[@]}"; do
+          find output -type f -name '*.conda' | sort | while IFS= read -r pkg; do
             echo "Testing: $pkg"
             rattler-build test \
+              -c "file://${PWD}/output" \
               -c https://prefix.dev/black-desk \
               -c conda-forge \
               --package-file "$pkg"
